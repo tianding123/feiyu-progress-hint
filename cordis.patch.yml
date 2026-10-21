@@ -1,0 +1,11 @@
+# feiyu-progress-hint —— DSH bundle patch
+#
+# 在输入框正上方挂一条任务进度条：Agent 跑长时间任务时出现，正常输出对话后消失。
+#
+# ⚠️ 本文件必须是【顶层 YAML 数组】，`name` 必须等于 package.json 的 name。
+# 卸载 / 停用：把 config.enabled 改成 false，或整条删掉（记得重启 dsh）。
+- insert:
+    - id: feiyu-progress-hint
+      name: feiyu-progress-hint
+      config:
+        enabled: true
