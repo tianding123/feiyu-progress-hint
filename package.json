@@ -1,6 +1,6 @@
 {
   "name": "feiyu-progress-hint",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "在输入框正上方挂一条任务进度条：Agent 跑长时间任务（下载/安装/sleep）时出现，正常输出对话后自动消失",
   "type": "module",
   "main": "index.js",
