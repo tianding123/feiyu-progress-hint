@@ -1,6 +1,6 @@
 # feiyu-progress-hint
 
-给 DSH 的一条**任务进度条** —— 长任务时出现在输入框正上方，干完自动消失。
+给 DSH 的一条**任务进度条** + **下载门禁** —— 一个包，两个功能。
 
 ## 它长什么样
 
@@ -14,6 +14,30 @@
 ```
 
 **没有任务时它完全不出现（返回 null，不占位）。**
+
+## 两个功能
+
+### ① 进度条（`progress_hint` 工具）
+
+```js
+progress_hint({ action: 'set', title: '安装 xxx', detail: '已下载 42MB/120MB', percent: 42 })
+progress_hint({ action: 'clear' })
+```
+
+### ② 下载门禁
+
+**要跑 `pip install` / `pnpm install` / `git clone` 之类，却还没挂进度条 → 拦住。**
+
+这是关键 —— **只装进度条而没有门禁的话，Agent 根本想不起来调它，等于装了个摆设。**
+
+```
+检测到要下载 → Agent 没挂条 → 拦住，逼它先挂
+挂好之后 → 30 分钟内所有下载安装直接放行
+```
+
+**快速通道**：本地小 tgz（`file:` 开头、< 1MB）不联网、几秒完事，直接放行。
+
+**关掉门禁**：`FEIYU_DOWNLOAD_GUARD=0`
 
 ## 位置是怎么定死的
 
@@ -31,29 +55,12 @@ margin: '0 auto 8px',
 
 **实测：跟输入框卡片左右边缘差 0 像素**（两边都是 `left=375 / right=1179 / w=804`）。
 
-## 两种触发方式
+## 刷新机制
 
-### ① Agent 主动标记（推荐）
+**前端每 2 秒轮询 `/api/feiyu-progress`，不经过对话队列，不打断 Agent。**
 
-```js
-progress_hint({
-  action: 'set',
-  title: '安装 feiyu-bili-studio',
-  detail: '已下载 42MB / 120MB',
-  percent: 42,          // -1 或不填 = 不定进度（只显示转圈 + 已用时间）
-})
-
-progress_hint({ action: 'clear' })   // 干完清掉
-```
-
-### ② 写状态文件
-
-```bash
-echo '{"title":"装依赖","percent":30,"detail":"...","startedAt":<ms>,"updatedAt":<ms>}' \
-  > "$DSH_HOME/progress-hint.json"
-```
-
-**前端每 2 秒轮询 `/api/feiyu-progress`，所以最多 2 秒延迟。**
+（这就是它比「定时发消息」强的地方 —— 定时消息会卡在待发送队列里，
+等这一轮跑完才一起涌进来，用户看到的全是过时消息。）
 
 ## 自动消失
 
@@ -91,8 +98,6 @@ apply(ctx) {
 export const inject = ['connection', 'tools']   // 少了 tools 就 ctx.get('tools') 拿不到
 ```
 
-**而外面的 `try/catch` 会把错误吞掉 —— 表现是「插件装了但工具没出现」。**
-
 ### ④ `connection.fetch.register` 的 `requestBody` 是**必填**
 
 ```ts
@@ -104,12 +109,20 @@ export interface ConnectionFetchRoute {
 }
 ```
 
-**漏了它 → 路由注册失败。**
-
 ### ⑤ 宽度要套 `--dsh-composer-card-max-width`
 
 **直接 `width: 100%` 会撑满 `composerStack`（993px），比输入框（804px）宽。**
-**必须加 `maxWidth: var(--dsh-composer-card-max-width)` + `margin: 0 auto`。**
+
+### ⑥ 门禁和进度条必须在同一个包里
+
+**v0.1.x 只有进度条，用户装了什么都不会发生** —— 除非 Agent 自觉调工具。
+v0.2.0 把下载门禁搬进来，才真正能跑。
+
+## 与其他插件的关系
+
+**本机另一个插件 `feiyu-delivery-guard` 也有第 19 条（下载门禁）。**
+v0.2.0 起那边默认关闭自己的第 19 条，避免重复拦截。
+想恢复由它负责：设 `FEIYU_DOWNLOAD_GUARD=1`。
 
 ## 安装
 
